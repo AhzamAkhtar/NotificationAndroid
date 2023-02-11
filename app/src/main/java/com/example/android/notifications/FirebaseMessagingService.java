@@ -44,7 +44,9 @@ public class FirebaseMessagingService extends com.google.firebase.messaging.Fire
             builder.setSmallIcon(resourceImage);
         }
 
-        Intent resultIntent = new Intent(this,MainActivity.class);
+        Intent resultIntent = new Intent(this,ShowDetails.class);
+        resultIntent.putExtra("TItle",remoteMessage.getNotification().getTitle());
+        resultIntent.putExtra("Description",remoteMessage.getNotification().getBody());
         PendingIntent pendingIntent = PendingIntent.getActivity(this,1,resultIntent,PendingIntent.FLAG_UPDATE_CURRENT);
 
         builder.setContentTitle(remoteMessage.getNotification().getTitle());
