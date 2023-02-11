@@ -1,9 +1,6 @@
 package com.example.android.notifications;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -18,6 +15,10 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -31,17 +32,19 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.messaging.FirebaseMessaging;
-import android.Manifest;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     FusedLocationProviderClient mFusedLocationClient;
     int PERMISSION_ID = 44;
     FirebaseFirestore db = FirebaseFirestore.getInstance();
-    private EditText mTitle , mMessage;
-    List<String> list=new ArrayList<>();
+    private EditText mTitle, mMessage;
+    List<String> list = new ArrayList<>();
+    HashMap<String, String> map = new HashMap<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,6 +57,8 @@ public class MainActivity extends AppCompatActivity {
         mTitle = findViewById(R.id.mTitle);
         mMessage = findViewById(R.id.mMessage);
 
+        getLastLocation();
+
         db.collection("users")
                 .get()
                 .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
@@ -62,7 +67,9 @@ public class MainActivity extends AppCompatActivity {
                         if (task.isSuccessful()) {
                             for (QueryDocumentSnapshot document : task.getResult()) {
                                 list.add(document.getString("deviceId"));
-                                Log.d("xx", list.toString());
+                                map.put(document.getString("deviceId") + "lat", document.getString("Lat"));
+                                map.put(document.getString("deviceId") + "lng", document.getString("Lng"));
+                                Log.d("xx", map.toString());
                             }
                         } else {
                             Log.d("TAG", "Error getting documents: ", task.getException());
@@ -118,16 +125,8 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("MissingPermission")
     private void getLastLocation() {
-        // check if permissions are given
         if (checkPermissions()) {
-
-            // check if location is enabled
             if (isLocationEnabled()) {
-
-                // getting last
-                // location from
-                // FusedLocationClient
-                // object
                 mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
                     @Override
                     public void onComplete(@NonNull Task<Location> task) {
@@ -135,9 +134,8 @@ public class MainActivity extends AppCompatActivity {
                         if (location == null) {
                             requestNewLocationData();
                         } else {
-                            Toast.makeText(getApplicationContext(), (int) location.getLatitude(),Toast.LENGTH_LONG).show();
-                            //latitudeTextView.setText(location.getLatitude() + "");
-                            //longitTextView.setText(location.getLongitude() + "");
+                            Log.d("zz", String.valueOf(location.getLatitude()));
+                            Log.d("zz", String.valueOf(location.getLongitude()));
                         }
                     }
                 });
@@ -147,8 +145,6 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         } else {
-            // if permissions aren't available,
-            // request for permissions
             requestPermissions();
         }
     }
@@ -156,16 +152,12 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("MissingPermission")
     private void requestNewLocationData() {
 
-        // Initializing LocationRequest
-        // object with appropriate methods
         LocationRequest mLocationRequest = new LocationRequest();
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         mLocationRequest.setInterval(5);
         mLocationRequest.setFastestInterval(0);
         mLocationRequest.setNumUpdates(1);
 
-        // setting LocationRequest
-        // on FusedLocationClient
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper());
     }
@@ -175,35 +167,27 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onLocationResult(LocationResult locationResult) {
             Location mLastLocation = locationResult.getLastLocation();
-            //latitudeTextView.setText("Latitude: " + mLastLocation.getLatitude() + "");
-            //longitTextView.setText("Longitude: " + mLastLocation.getLongitude() + "");
         }
     };
 
     private boolean checkPermissions() {
         return ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
 
-        // If we want background location
-        // on Android 10.0 and higher,
-        // use:
-        // ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+
     }
 
-    // method to request for permissions
     private void requestPermissions() {
         ActivityCompat.requestPermissions(this, new String[]{
                 Manifest.permission.ACCESS_COARSE_LOCATION,
                 Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_ID);
     }
 
-    // method to check
-    // if location is enabled
     private boolean isLocationEnabled() {
         LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
     }
 
-    // If everything is alright then
+
     @Override
     public void
     onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -237,5 +221,25 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    public double getDistance(
+            String centralLat,
+            String centralLng,
+            String userLat,
+            String userLng
+    ) {
+        Location startPoint=new Location("locationA");
+        startPoint.setLatitude(Double.parseDouble(centralLat));
+        startPoint.setLongitude(Double.parseDouble(centralLng));
+
+        Location endPoint=new Location("locationb");
+        endPoint.setLatitude(Double.parseDouble(userLat));
+        endPoint.setLongitude(Double.parseDouble(userLng));
+
+        double distance=startPoint.distanceTo(endPoint);
+        distance = (distance/1000).toString().subSequence(0,3);
+        distance = (distance/1000).toString().subSequence(0,3);
+        return distance;
     }
 }
