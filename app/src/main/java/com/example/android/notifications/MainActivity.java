@@ -1,28 +1,13 @@
 package com.example.android.notifications;
-
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.location.Location;
-import android.location.LocationManager;
 import android.os.Bundle;
-import android.os.Looper;
-import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-
 import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -32,14 +17,12 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.messaging.FirebaseMessaging;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     FusedLocationProviderClient mFusedLocationClient;
-    int PERMISSION_ID = 44;
     FirebaseFirestore db = FirebaseFirestore.getInstance();
     private EditText mTitle, mMessage;
     List<String> list = new ArrayList<>();
@@ -52,12 +35,11 @@ public class MainActivity extends AppCompatActivity {
 
         FirebaseMessaging.getInstance().subscribeToTopic("all");
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        //getCentralLocation();
+        getCentralLocation();
 
         mTitle = findViewById(R.id.mTitle);
         mMessage = findViewById(R.id.mMessage);
 
-        getLastLocation();
 
         db.collection("users")
                 .get()
@@ -100,14 +82,24 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 if(!mTitle.getText().toString().isEmpty() && !mMessage.getText().toString().isEmpty()){
                     for(String i : list){
-                        FcmNotificationsSender notificationsSender = new FcmNotificationsSender(
-                                i,
-                                mTitle.getText().toString(),
-                                mMessage.getText().toString(),
-                                getApplicationContext(),
-                                MainActivity.this
+                        Double distance = getDistance(
+                                map.get("centralLat"),
+                                map.get("centralLng"),
+                                map.get(i+"lat"),
+                                map.get(i+"lng")
                         );
-                        notificationsSender.SendNotifications();
+                        String newdistance = (String) String.valueOf(distance).subSequence(0,1);
+                        Log.d("cccccccDistace",newdistance);
+                        if(Integer.parseInt(newdistance)<10) {
+                            FcmNotificationsSender notificationsSender = new FcmNotificationsSender(
+                                    i,
+                                    mTitle.getText().toString(),
+                                    mMessage.getText().toString(),
+                                    getApplicationContext(),
+                                    MainActivity.this
+                            );
+                            notificationsSender.SendNotifications();
+                        }
                     }
 
 
@@ -123,82 +115,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    @SuppressLint("MissingPermission")
-    private void getLastLocation() {
-        if (checkPermissions()) {
-            if (isLocationEnabled()) {
-                mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Location> task) {
-                        Location location = task.getResult();
-                        if (location == null) {
-                            requestNewLocationData();
-                        } else {
-                            Log.d("zz", String.valueOf(location.getLatitude()));
-                            Log.d("zz", String.valueOf(location.getLongitude()));
-                        }
-                    }
-                });
-            } else {
-                Toast.makeText(this, "Please turn on" + " your location...", Toast.LENGTH_LONG).show();
-                Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                startActivity(intent);
-            }
-        } else {
-            requestPermissions();
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private void requestNewLocationData() {
-
-        LocationRequest mLocationRequest = new LocationRequest();
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        mLocationRequest.setInterval(5);
-        mLocationRequest.setFastestInterval(0);
-        mLocationRequest.setNumUpdates(1);
-
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper());
-    }
-
-    private LocationCallback mLocationCallback = new LocationCallback() {
-
-        @Override
-        public void onLocationResult(LocationResult locationResult) {
-            Location mLastLocation = locationResult.getLastLocation();
-        }
-    };
-
-    private boolean checkPermissions() {
-        return ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-
-
-    }
-
-    private void requestPermissions() {
-        ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_ID);
-    }
-
-    private boolean isLocationEnabled() {
-        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-    }
-
-
-    @Override
-    public void
-    onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == PERMISSION_ID) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                getLastLocation();
-            }
-        }
-    }
 
 
     public void getCentralLocation(){
@@ -212,6 +128,8 @@ public class MainActivity extends AppCompatActivity {
                         Log.d("Tag", "DocumentSnapshot data: " + document.getData());
                         String lat = document.getString("Lat");
                         String Lng = document.getString("Lng");
+                        map.put("centralLat",lat);
+                        map.put("centralLng",Lng);
                     } else {
                         Log.d("Tag", "No such document");
                     }
@@ -238,8 +156,6 @@ public class MainActivity extends AppCompatActivity {
         endPoint.setLongitude(Double.parseDouble(userLng));
 
         double distance=startPoint.distanceTo(endPoint);
-        distance = (distance/1000).toString().subSequence(0,3);
-        distance = (distance/1000).toString().subSequence(0,3);
         return distance;
     }
 }
