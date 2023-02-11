@@ -90,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
                         );
                         String newdistance = (String) String.valueOf(distance).subSequence(0,1);
                         Log.d("cccccccDistace",newdistance);
-                        if(Integer.parseInt(newdistance)<10) {
+                        if(Integer.parseInt(newdistance)<3) {
                             FcmNotificationsSender notificationsSender = new FcmNotificationsSender(
                                     i,
                                     mTitle.getText().toString(),
