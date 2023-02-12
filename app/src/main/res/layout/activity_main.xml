@@ -33,7 +33,8 @@
         android:layout_marginLeft="30dp"
         android:layout_marginRight="30dp"
         android:id="@+id/mSend"
-        android:text="SEND"/>
+        android:background = "@drawable/button_background"
+        android:text="SEND NOTIFICATION "/>
 
 
 </LinearLayout>

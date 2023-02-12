@@ -20,7 +20,7 @@ public class ShowDetails extends AppCompatActivity {
         TextView title = findViewById(R.id.tvMsgTitle);
         TextView body = findViewById(R.id.tvMsgMessage);
 
-        title.setText("Notificcation Title  = "+msg);
+        title.setText("Notification Title  = "+msg);
         body.setText("Notification Description  = "+description);
 
     }
